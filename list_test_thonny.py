@@ -28,7 +28,7 @@ N=0
 def init_adxl345():
     i2c.writeto_mem(ADXL345_ADDRESS, ADXL345_POWER_CTL, bytearray([0x08]))  # Set bit 3 to 1 to enable measurement mode
     i2c.writeto_mem(ADXL345_ADDRESS, ADXL345_DATA_FORMAT, bytearray([0x0B]))  # Set data format to full resolution, +/- 16g
- 
+
 # Read acceleration data
 def read_accel_data():
     data = i2c.readfrom_mem(ADXL345_ADDRESS, ADXL345_DATAX0, 6)# read 6 bytes from ADXL345_DATAX0 of ADXL345_ADDRESS
