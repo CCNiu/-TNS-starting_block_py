@@ -33,10 +33,13 @@ import utime
 uart = machine.UART(1, baudrate=9600,tx=Pin(4),rx=Pin(5))  # UART0，波特率設置為9600
 
 while True:
-    if uart.any():
-        data = uart.read().decode('utf-8')
-        print(data)
-    else:
-        print("nothing")
-    utime.sleep(1)
+#     if uart.any():
+#         data = uart.read().decode('utf-8')
+#         print(data)
+# 
+#     else:
+#         print("nothing")
+    uart.write("Data received\n")
+    print("123")   
+    utime.sleep(0.1)
 
