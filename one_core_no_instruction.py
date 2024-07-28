@@ -35,8 +35,6 @@ def read_accel_data():
 init_adxl345()
 time.sleep(0.0001)
 def mean(data):
-    if iter(data) is data:
-        data = list(data)
     return sum(data)/len(data)
 
 def pvariance(data, mu=None):
@@ -113,10 +111,6 @@ time.sleep(0.01)
 uart.write(my_list)
 utime.sleep(0.01)
 
-#
-# for i in range(2000):
-#     #uart.write("{:d}\n".format(X_new_list[i]).encode('utf-8'))
-#     uart.write("{:d}\n".format(188))
-#     utime.sleep(0.01)
-# uart.write(("end").encode('utf-8')+ b'\n')
+
+
 
