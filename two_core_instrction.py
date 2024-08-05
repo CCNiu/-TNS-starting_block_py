@@ -58,7 +58,6 @@ def pstdev(data, mu=None):
 def read_uart_command():
     if uart.any():
         command = uart.read().decode('utf-8')
-        print(f"Received command: {command}")  # 添加调试输出
         if len(command) >= 3:
             cmd_type = command[0]
             cmd_value = command[1:3]
@@ -66,7 +65,6 @@ def read_uart_command():
     return None, None
 
 def send_uart_message(message):
-    """Send a message to UART."""
     uart.write(message.encode('utf-8') + b'\n')
     utime.sleep(0.01)
 
@@ -129,13 +127,11 @@ def core1_task():
 _thread.start_new_thread(core1_task, ())
 
 # 核心 0 上執行的 UART 指令處理函數
-while True:
+while(uart.any()):
     cmd_type, cmd_value = read_uart_command()
     time.sleep(1)
-    print(f"Command type: {cmd_type}, Command value: {cmd_value}")  # 添加调试输出
 
     if cmd_value != UID:
-        print(f"UID mismatch: expected {UID}, got {cmd_value}")  # 添加调试输出
         continue
 
     if cmd_type == 'O':  # open
@@ -146,15 +142,10 @@ while True:
         continue
 
     elif cmd_type == 'S':  # start
-        print("Start command received")  # 添加调试输出
-        send_uart_message("set ptr=0")
-        time.sleep(0.01)
         record_ptr = N
         counter = 0
-        print(f"record_ptr set to {record_ptr}, counter reset")  # 添加调试输出
-
-        # 启动核心1处理加速度数据
-        _thread.start_new_thread(core1_task, ())
+        send_uart_message("set ptr=0")
+        time.sleep(0.01)
 
     elif cmd_type == 'R':  # react time
         send_uart_message("R")
