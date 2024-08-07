@@ -20,7 +20,7 @@ ADXL345_FREQ = 0x2C
 
 # Initialize I2C and UART
 i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=100000)
-uart = UART(1, baudrate=115200, parity=None, tx=Pin(4), rx=Pin(5))
+uart = machine.UART(1, baudrate=115200, parity=None, tx=Pin(4), rx=Pin(5))
 led = Pin(25, Pin.OUT)
 
 # Data lists
@@ -33,6 +33,7 @@ R_time = 999
 s_switch = 0 #off
 mode = ' '
 status = False
+X_realtime = 0
 
 def init_adxl345():
     """Initialize the ADXL345 accelerometer."""
@@ -59,15 +60,18 @@ def pstdev(data, mu=None):
 
 def read_uart_command():
     if uart.any():
+        print('OK')
         command = uart.read().decode('utf-8')
+        print(command)
         if len(command) >= 3:
             cmd_type = command[0]
             cmd_value = command[1:3]
             return cmd_type, cmd_value
-    # return None, None
+    return None, None
 
 def send_uart_message(message):
-    uart.write( UID , message.encode('utf-8') + b'\n')
+    uart.write( UID )
+    uart.write( message.encode('utf-8') + b'\n')
     utime.sleep(0.01)
 
 # Initialize ADXL345
@@ -76,13 +80,69 @@ time.sleep(0.0001)
 
 # 在全局變量中初始化偏移量
 ADXL345_OFSX = 0
+def core0_task():
+    global R_time, mode, X_realtime 
+    while(True):
+        if uart.any() :
+            cmd_type, cmd_value = read_uart_command()
+            print(cmd_type, cmd_value)
+            time.sleep(0.1)
 
+            if cmd_value != UID and cmd_value != '00':
+                continue
+
+            if cmd_type == 'O':  # open
+                mode = 'O'
+                ADXL345_OFSX = read_accel_data()
+                print("offset check", ADXL345_OFSX)
+                x= read_accel_data()
+                X = abs(x - ADXL345_OFSX)
+                continue
+
+            elif cmd_type == 'S':  # start
+                mode = 'S'
+                record_ptr = N
+                counter = 0
+                # send_uart_message("set ptr=0")
+                time.sleep(0.01)
+
+            elif cmd_type == 'R':  # react time
+                mode = 'R'
+                send_uart_message("R")
+                if (R_time == 999 ):
+                    send_uart_message( " NULL " )#no react time data
+                else:
+                    send_uart_message("Reaction time: " + str(R_time) + " second")
+
+            elif cmd_type == 'D':  # data
+                mode = 'D'
+                if ( X_new_list[1:100] == 0 ):
+                    send_uart_message("NULL") #no data list
+                else:
+                    my_list = ','.join(str(x) for x in X_new_list)
+                    time.sleep(0.01)
+                    send_uart_message(my_list)
+                send_uart_message("D")
+
+            elif cmd_type == 'T':  # test
+                mode = 'T'
+                send_uart_message("testing")
+                send_uart_message(str(X_realtime))
+
+            elif cmd_type == 'C':
+                mode = 'C'
+                send_uart_message("C")
+                utime.sleep(0.01)
+                continue
+
+            else:
+                send_uart_message("invalid instruction")
 
 # 核心 1 上執行的加速度計測量和計算函數
 def core1_task():
-    global N, counter, X_list, X_new_list, record_ptr, R_time, ADXL345_OFSX
+    global N, counter, X_list, X_new_list, record_ptr, R_time, ADXL345_OFSX, mode, X_realtime, status
     while True:
-        if mode != 'T' or 'C' : # O S R D
+        if mode != 'T' and mode != 'C' and mode != 'ST' : # O S R D
             #get accel
             if mode =='O' :
                 if status == False:
@@ -90,8 +150,6 @@ def core1_task():
                     status = True
                     print("offset check", ADXL345_OFSX)
                     
-                x= read_accel_data()
-                X = abs(x - ADXL345_OFSX)
                 s_switch = 1
                 
             elif mode=='S' and s_switch ==1 :
@@ -100,7 +158,6 @@ def core1_task():
                     
                     print("排序前:", X_list)
                     print("排序後:", X_new_list)
-
                     X_list.clear()
 
                     X_ready_std_list = X_new_list[0:300]
@@ -119,10 +176,10 @@ def core1_task():
                             print("數值:", X_new_list[i], "第", R_time, "second")
                             send_uart_message("Reaction time: " + str(R_time) + " second")
                             break
-                            x, y, z = read_accel_data()
-                            X = abs(x - ADXL345_OFSX)
-                    mode == 'ST'
-
+                    mode = 'ST'
+            print(N)
+            x= read_accel_data()
+            X = abs(x - ADXL345_OFSX)
             if N > 1999:
                 N = 0
                 X_list[N] = X
@@ -139,6 +196,8 @@ def core1_task():
                 status = False
             X_list = [0] * 2000
             X_new_list = [0] * 2000
+        elif mode == 'T':
+            X_realtime = read_accel_data()
         else:
             continue
 
@@ -146,56 +205,4 @@ def core1_task():
 _thread.start_new_thread(core1_task, ())
 
 # 核心 0 上執行的 UART 指令處理函數
-while(uart.any()):
-    cmd_type, cmd_value = read_uart_command()
-    time.sleep(0.1)
-
-    if cmd_value != UID or '00':
-        continue
-
-    if cmd_type == 'O':  # open
-        mode = 'O'
-        ADXL345_OFSX = read_accel_data()
-        print("offset check", ADXL345_OFSX)
-        x= read_accel_data()
-        X = abs(x - ADXL345_OFSX)
-        continue
-
-    elif cmd_type == 'S':  # start
-        mode = 'S'
-        record_ptr = N
-        counter = 0
-        send_uart_message("set ptr=0")
-        time.sleep(0.01)
-
-    elif cmd_type == 'R':  # react time
-        mode = 'R'
-        send_uart_message("R")
-        if (R_time == 999 ):
-            send_uart_message( " NULL " )#no react time data
-        else:
-            send_uart_message("Reaction time: " + str(R_time) + " second")
-
-    elif cmd_type == 'D':  # data
-        mode = 'D'
-        if ( X_new_list[1:100] == 0 ):
-            send_uart_message("NULL") #no data list
-        else:
-            my_list = ','.join(str(x) for x in X_new_list)
-            time.sleep(0.01)
-            send_uart_message(my_list)
-        send_uart_message("D")
-
-    elif cmd_type == 'T':  # test
-        mode = 'T'
-        send_uart_message("testing")
-        send_uart_message(str(X))
-
-    elif cmd_type == 'C':
-        mode = 'C'
-        send_uart_message("C")
-        utime.sleep(0.01)
-        continue
-
-    else:
-        send_uart_message("invalid instruction")
+core0_task()
