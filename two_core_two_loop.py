@@ -29,7 +29,7 @@ X_new_list = [0] * 2000
 record_ptr = 0
 N = 0
 counter = 0
-R_time = 999
+R_time = 99999
 s_switch = 0 #off
 mode = ' '
 status = False
@@ -60,7 +60,7 @@ def pstdev(data, mu=None):
 
 def read_uart_command():
     if uart.any():
-        print('OK')
+        #print('OK')
         command = uart.read().decode('utf-8')
         print(command)
         if len(command) >= 3:
@@ -70,7 +70,7 @@ def read_uart_command():
     return None, None
 
 def send_uart_message(message):
-    uart.write( UID )
+    uart.write( UID + " " )
     uart.write( message.encode('utf-8') + b'\n')
     utime.sleep(0.01)
 
@@ -81,7 +81,7 @@ time.sleep(0.0001)
 # 在全局變量中初始化偏移量
 ADXL345_OFSX = 0
 def core0_task():
-    global R_time, mode, X_realtime 
+    global R_time, mode, X_realtime ,record_ptr
     while(True):
         if uart.any() :
             cmd_type, cmd_value = read_uart_command()
@@ -109,7 +109,7 @@ def core0_task():
             elif cmd_type == 'R':  # react time
                 mode = 'R'
                 send_uart_message("R")
-                if (R_time == 999 ):
+                if (R_time == 99999 ):
                     send_uart_message( " NULL " )#no react time data
                 else:
                     send_uart_message("Reaction time: " + str(R_time) + " second")
@@ -153,9 +153,9 @@ def core1_task():
                 s_switch = 1
                 
             elif mode=='S' and s_switch ==1 :
-                if counter > 1000 :
+                if counter> 999 :
+                    print("排序前ptr:",record_ptr)
                     X_new_list = X_list[record_ptr - 500:record_ptr] + X_list[record_ptr:2000] + X_list[0:record_ptr - 500]
-                    
                     print("排序前:", X_list)
                     print("排序後:", X_new_list)
                     X_list.clear()
@@ -177,18 +177,18 @@ def core1_task():
                             send_uart_message("Reaction time: " + str(R_time) + " second")
                             break
                     mode = 'ST'
+                    continue
+                else:
+                   counter += 1 
             print(N)
             x= read_accel_data()
             X = abs(x - ADXL345_OFSX)
             if N > 1999:
                 N = 0
-                X_list[N] = X
-                time.sleep(0.0001)
-            else:
-                X_list[N] = X
-                time.sleep(0.0001)
+            X_list[N] = X
+            time.sleep(0.0001)
             N += 1
-            counter += 1
+            
             
         elif mode == 'C': #C
             #reset
