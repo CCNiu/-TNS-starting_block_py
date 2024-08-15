@@ -34,6 +34,7 @@ s_switch = 0 #off
 mode = ' '
 status = False
 X_realtime = 0
+ADXL345_OFSX = 0
 
 def init_adxl345():
     """Initialize the ADXL345 accelerometer."""
@@ -62,7 +63,7 @@ def read_uart_command():
     if uart.any():
         #print('OK')
         command = uart.read().decode('utf-8')
-        print(command)
+        #print(command)
         if len(command) >= 3:
             cmd_type = command[0]
             cmd_value = command[1:3]
@@ -81,7 +82,7 @@ time.sleep(0.0001)
 # 在全局變量中初始化偏移量
 ADXL345_OFSX = 0
 def core0_task():
-    global R_time, mode, X_realtime ,record_ptr
+    global R_time, mode, X_realtime ,record_ptr,ADXL345_OFSX
     while(True):
         if uart.any() :
             cmd_type, cmd_value = read_uart_command()
@@ -92,12 +93,12 @@ def core0_task():
                 continue
 
             if cmd_type == 'O':  # open
-                mode = 'O'
                 ADXL345_OFSX = read_accel_data()
-                print("offset check", ADXL345_OFSX)
-                x= read_accel_data()
-                X = abs(x - ADXL345_OFSX)
-                continue
+                print("11",ADXL345_OFSX)
+                print(str(ADXL345_OFSX))
+                send_uart_message(str(ADXL345_OFSX))
+                time.sleep(0.01)
+                mode = 'O'
 
             elif cmd_type == 'S':  # start
                 mode = 'S'
@@ -127,13 +128,14 @@ def core0_task():
             elif cmd_type == 'T':  # test
                 mode = 'T'
                 send_uart_message("testing")
+                #print("X_realtime2 =",X_realtime)
                 send_uart_message(str(X_realtime))
-
+                time.sleep(0.01)
+                
             elif cmd_type == 'C':
                 mode = 'C'
                 send_uart_message("C")
                 utime.sleep(0.01)
-                continue
 
             else:
                 send_uart_message("invalid instruction")
@@ -148,20 +150,18 @@ def core1_task():
                 if status == False:
                     ADXL345_OFSX = read_accel_data()
                     status = True
-                    print("offset check", ADXL345_OFSX)
+                    #print("offset check", ADXL345_OFSX)
                     
                 s_switch = 1
                 
             elif mode=='S' and s_switch ==1 :
                 if counter> 999 :
-                    print("排序前ptr:",record_ptr)
                     X_new_list = X_list[record_ptr - 500:record_ptr] + X_list[record_ptr:2000] + X_list[0:record_ptr - 500]
-                    print("排序前:", X_list)
-                    print("排序後:", X_new_list)
+                    #print("排序前:", X_list)
+                    #print("排序後:", X_new_list)
                     X_list.clear()
 
                     X_ready_std_list = X_new_list[0:300]
-                    gc.collect()
 
                     X_ready_list_dev = round(pstdev(X_ready_std_list), 2)
                     X_ready_list_mean = round(mean(X_ready_std_list), 2)
@@ -179,16 +179,15 @@ def core1_task():
                     mode = 'ST'
                     continue
                 else:
-                   counter += 1 
-            print(N)
+                    counter += 1
+            print(mode,N)
             x= read_accel_data()
             X = abs(x - ADXL345_OFSX)
             if N > 1999:
                 N = 0
             X_list[N] = X
-            time.sleep(0.0001)
+            time.sleep(0.001)
             N += 1
-            
             
         elif mode == 'C': #C
             #reset
@@ -196,8 +195,12 @@ def core1_task():
                 status = False
             X_list = [0] * 2000
             X_new_list = [0] * 2000
+            init_adxl345()
         elif mode == 'T':
             X_realtime = read_accel_data()
+            #print("X_realtime1 =",X_realtime)
+            time.sleep(0.0001)
+            mode = 'ST'
         else:
             continue
 
@@ -206,3 +209,4 @@ _thread.start_new_thread(core1_task, ())
 
 # 核心 0 上執行的 UART 指令處理函數
 core0_task()
+
