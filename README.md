@@ -10,3 +10,5 @@
 - one_core_no_instruction是單核心沒有指令的版本
 - two_core_instruction 是鄉核心有指令的
 - two_core_infinite_loop 是測試雙核心無限迴圈的
+- pi_pico 是用C更改two_core_instruction
+- pi_pico_ver2 是設定另一塊PICO來做debug的
