@@ -10,8 +10,8 @@
 // Constants
 #define I2C_PORT i2c0
 
-#define PICO_I2C_SDA_PIN 0
-#define PICO_I2C_SCL_PIN 1
+#define PICO_I2C_SDA_PIN 8
+#define PICO_I2C_SCL_PIN 9
 
 #define UART_ID uart1
 #define BAUD_RATE 115200
@@ -165,6 +165,7 @@ int main() {
             // 使用 strcmp 來比較字串
             if (cmd_type == 'S' && strcmp(cmd_value, "00") == 0) {
                 send_uart_message("check S00");
+                printf("hello pico");
             }
         }
     }
