@@ -12,7 +12,7 @@
             "gdbPath": "${command:raspberry-pi-pico.getGDBPath}",
             "device": "${command:raspberry-pi-pico.getChip}",
             "configFiles": [
-                "raspberrypi-swd.cfg",
+                "interface/cmsis-dap.cfg",
                 "target/${command:raspberry-pi-pico.getTarget}.cfg"
             ],
             "svdFile": "${userHome}/.pico-sdk/sdk/2.0.0/src/${command:raspberry-pi-pico.getChip}/hardware_regs/${command:raspberry-pi-pico.getChip}.svd",
@@ -55,7 +55,7 @@
             "miDebuggerPath": "${command:raspberry-pi-pico.getGDBPath}",
             "miDebuggerServerAddress": "localhost:3333",
             "debugServerPath": "${userHome}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
-            "debugServerArgs": "-f raspberrypi-swd.cfg -f target/${command:raspberry-pi-pico.getTarget}.cfg -c \"adapter speed 5000\"",
+            "debugServerArgs": "-f interface/cmsis-dap.cfg -f target/${command:raspberry-pi-pico.getTarget}.cfg -c \"adapter speed 5000\"",
             "serverStarted": "Listening on port .* for gdb connections",
             "filterStderr": true,
             "hardwareBreakpoints": {
