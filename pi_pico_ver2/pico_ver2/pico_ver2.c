@@ -30,6 +30,8 @@
 #define DETECT_POST_NUM 1000
 #define THREADSHOLD 100
 
+char UID[3] = "00";
+
 char buffer[50]; // 定義一個足夠大的字元陣列來存儲格式化字串
 char cmd_value[3];
 char cmd_type;
@@ -149,6 +151,7 @@ void read_uart_command(char* cmd_type, char* cmd_value) {
 }
 
 void send_uart_message(const char* message) {
+    uart_puts(uart1, UID);
     uart_puts(uart1, message);
     sleep_us(100);
     uart_puts(uart1, "\n");
@@ -209,41 +212,42 @@ void core0_task() {
         if (uart_is_readable(uart1)) {
             read_uart_command(&cmd_type, cmd_value);
             printf("%c %s\n", cmd_type, cmd_value);
-            sleep_ms(100);
-
-            if (cmd_type == 'O') {
-                Global_Mode = 'O';
-                send_uart_message("Offset set");
-                sleep_us(100);
-            } else if (cmd_type == 'S') {
-                Global_Mode = 'S';
-                send_uart_message("Started");
-                sleep_us(100);
-            } else if (cmd_type == 'R') {
-                if (Global_RT == -1) {
-                    send_uart_message("NULL");
+            if(strcmp(cmd_value, "00") == 0 || strcmp(cmd_value, UID) == 0){
+                sleep_ms(1);
+                if (cmd_type == 'O') {
+                    Global_Mode = 'O';
+                    send_uart_message("Offset set");
+                    sleep_us(100);
+                } else if (cmd_type == 'S') {
+                    Global_Mode = 'S';
+                    send_uart_message("Started");
+                    sleep_us(100);
+                } else if (cmd_type == 'R') {
+                    if (Global_RT == -1) {
+                        send_uart_message("NULL");
+                    } else {
+                        char buffer[32];
+                        snprintf(buffer, 32, "Reaction time: %.2f seconds", Global_RT);
+                        send_uart_message(buffer);
+                    }
+                } else if (cmd_type == 'T') {
+                    Global_Mode = 'T';
+                    send_uart_message("Testing");
+                    sleep_us(100);
+                } else if (cmd_type == 'C') {
+                    Global_Mode = 'C';
+                    send_uart_message("Reset");
+                    sleep_us(100);
+                } else if (cmd_type == 'D') {
+                    Global_Mode = 'D';
+                    send_uart_message("Data set");
+                    sleep_us(100);
+                    send_accel_data(Global_X_Post_List, DETECT_POST_NUM);
+                    sleep_ms(10);
                 } else {
-                    char buffer[32];
-                    snprintf(buffer, 32, "Reaction time: %.2f seconds", Global_RT);
-                    send_uart_message(buffer);
+                    send_uart_message("Invalid command");
+                    sleep_us(100);
                 }
-            } else if (cmd_type == 'T') {
-                Global_Mode = 'T';
-                send_uart_message("Testing");
-                sleep_us(100);
-            } else if (cmd_type == 'C') {
-                Global_Mode = 'C';
-                send_uart_message("Reset");
-                sleep_us(100);
-            } else if (cmd_type == 'D') {
-                Global_Mode = 'D';
-                send_uart_message("Data set");
-                sleep_us(100);
-                send_accel_data(Global_X_Post_List, DETECT_POST_NUM);
-                sleep_ms(10);
-            } else {
-                send_uart_message("Invalid command");
-                sleep_us(100);
             }
         }
     }
